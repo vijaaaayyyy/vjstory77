@@ -11,10 +11,8 @@ const headlineFillImage = new Image();
 headlineFillImage.src = "/img/pages/abstract-people.webp";
 const heartImage = new Image();
 heartImage.src = "/img/pages/heart.png";
-const agapeImage = new Image();
-agapeImage.crossOrigin = "anonymous";
-agapeImage.src =
-	"https://cdn.builder.io/api/v1/image/assets%2F642fe6953ac445aa94caa185de9acd75%2F8931f5500a6c4088bd012f1fe7bd05da?format=webp&width=800&height=1200";
+const pageOneImage = new Image();
+pageOneImage.src = "/img/pages/untitled1-page-1.png";
 const backgroundImage = new Image();
 backgroundImage.crossOrigin = "anonymous";
 backgroundImage.src =
@@ -174,26 +172,6 @@ export default class Page {
 		}
 	}
 
-	private drawTallLo(ctx: CanvasRenderingContext2D, w: number, h: number) {
-		const fontSize = Math.round(h * 0.28);
-		ctx.font = `400 ${fontSize}px Georgia, "Times New Roman", serif`;
-		ctx.fillStyle = "#1f2a33";
-		ctx.textAlign = "left";
-		ctx.textBaseline = "alphabetic";
-		const x = w * 0.05;
-		const baseline = h * 0.72;
-		ctx.fillText("l", x, baseline);
-		const lWidth = ctx.measureText("l").width;
-		const o = ctx.measureText("o");
-		const oHeight = o.actualBoundingBoxAscent + o.actualBoundingBoxDescent;
-		const targetHeight = h * 0.64;
-		ctx.save();
-		ctx.translate(x + lWidth, baseline);
-		ctx.scale(0.7, targetHeight / oHeight);
-		ctx.fillText("o", 0, 0);
-		ctx.restore();
-	}
-
 	private decoratePageTexture(
 		texture: THREE.Texture,
 		pageNumber: number | null,
@@ -215,18 +193,27 @@ export default class Page {
 			ctx.fillStyle = "#ffffff";
 			ctx.fillRect(0, 0, canvas.width, canvas.height);
 			if (pageNumber === 1) {
-				if (!agapeImage.complete) {
-					agapeImage.addEventListener(
+				if (!pageOneImage.complete || !pageOneImage.naturalWidth) {
+					pageOneImage.addEventListener(
 						"load",
 						() => this.decoratePageTexture(texture, pageNumber, isBack),
 						{ once: true },
 					);
 					return;
 				}
-				const agapeScale = canvas.width / agapeImage.naturalWidth;
-				const agapeHeight = agapeImage.naturalHeight * agapeScale;
-				ctx.drawImage(agapeImage, 0, canvas.height - agapeHeight, canvas.width, agapeHeight);
-				this.drawMountainShadow(ctx, canvas.width, canvas.height, 0);
+				const scale = Math.max(
+					canvas.width / pageOneImage.naturalWidth,
+					canvas.height / pageOneImage.naturalHeight,
+				);
+				const dw = pageOneImage.naturalWidth * scale;
+				const dh = pageOneImage.naturalHeight * scale;
+				ctx.drawImage(
+					pageOneImage,
+					(canvas.width - dw) / 2,
+					(canvas.height - dh) / 2,
+					dw,
+					dh,
+				);
 			} else {
 				if (!headlineFillImage.complete || !heartImage.complete) {
 					const retry = () => {
