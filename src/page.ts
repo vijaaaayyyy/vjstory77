@@ -7,10 +7,8 @@ import {
 	clamp,
 } from "./util";
 
-const headlineFillImage = new Image();
-headlineFillImage.src = "/img/pages/abstract-people.webp";
-const heartImage = new Image();
-heartImage.src = "/img/pages/heart.png";
+const pageTwoImage = new Image();
+pageTwoImage.src = "/img/pages/sdfgh-page-2.png";
 const pageOneImage = new Image();
 pageOneImage.src = "/img/pages/untitled1-page-1.png";
 const backgroundImage = new Image();
@@ -116,62 +114,6 @@ export default class Page {
 		return texture;
 	}
 
-	private drawMountainShadow(ctx: CanvasRenderingContext2D, w: number, h: number, pageOffset: number) {
-		const x1 = w * 0.05;
-		const y1 = h * 0.76;
-		const x2 = w * 2;
-		const steps = 160;
-		ctx.save();
-		ctx.translate(-pageOffset, 0);
-		ctx.beginPath();
-		ctx.moveTo(0, 0);
-		ctx.lineTo(0, y1);
-		ctx.lineTo(x1, y1);
-		for (let i = 0; i <= steps; i++) {
-			const t = i / steps;
-			const x = x1 + t * (x2 - x1);
-			const baseY = y1 * (1 - t);
-			const wave = h * 0.035 * Math.sin(t * Math.PI * 4) + h * 0.015 * Math.sin(t * Math.PI * 11 + 1);
-			const peak = h * 0.03 * Math.abs(Math.sin(t * Math.PI * 7));
-			ctx.lineTo(x, Math.max(0, baseY + wave - peak));
-		}
-		ctx.lineTo(x2, 0);
-		ctx.closePath();
-		ctx.fillStyle = "#000000";
-		ctx.fill();
-		ctx.restore();
-	}
-
-	private drawHeadline(
-		ctx: CanvasRenderingContext2D,
-		text: string,
-		w: number,
-		h: number,
-		baselineRatio: number,
-		gap: string | CanvasPattern | null = null,
-	) {
-		let fontSize = Math.round(h * 0.28);
-		ctx.font = `400 ${fontSize}px Georgia, "Times New Roman", serif`;
-		const measured = ctx.measureText(text).width;
-		const maxWidth = w * 0.9;
-		if (measured > maxWidth) {
-			fontSize = Math.floor((fontSize * maxWidth) / measured);
-			ctx.font = `400 ${fontSize}px Georgia, "Times New Roman", serif`;
-		}
-		ctx.fillStyle = gap ? "#ffffff" : "#1f2a33";
-		ctx.textAlign = "left";
-		ctx.textBaseline = "alphabetic";
-		ctx.fillText(text, w * 0.05, h * baselineRatio);
-		if (gap) {
-			ctx.lineWidth = fontSize * 0.07;
-			ctx.strokeStyle = "#1f2a33";
-			ctx.strokeText(text, w * 0.05, h * baselineRatio);
-			ctx.lineWidth = fontSize * 0.045;
-			ctx.strokeStyle = gap;
-			ctx.strokeText(text, w * 0.05, h * baselineRatio);
-		}
-	}
-
 	private decoratePageTexture(
 		texture: THREE.Texture,
 		pageNumber: number | null,
@@ -215,36 +157,27 @@ export default class Page {
 					dh,
 				);
 			} else {
-				if (!headlineFillImage.complete || !heartImage.complete) {
-					const retry = () => {
-						if (headlineFillImage.complete && heartImage.complete) this.decoratePageTexture(texture, pageNumber, isBack);
-					};
-					headlineFillImage.addEventListener("load", retry);
-					heartImage.addEventListener("load", retry);
+				if (!pageTwoImage.complete || !pageTwoImage.naturalWidth) {
+					pageTwoImage.addEventListener(
+						"load",
+						() => this.decoratePageTexture(texture, pageNumber, isBack),
+						{ once: true },
+					);
 					return;
 				}
-				const fillCanvas = document.createElement("canvas");
-				fillCanvas.width = canvas.width;
-				fillCanvas.height = canvas.height;
-				const fillCtx = fillCanvas.getContext("2d");
-				if (!fillCtx) return;
-				const scale = Math.max(canvas.width / headlineFillImage.width, canvas.height / headlineFillImage.height);
-				const dw = headlineFillImage.width * scale;
-				const dh = headlineFillImage.height * scale;
-				fillCtx.drawImage(headlineFillImage, (canvas.width - dw) / 2, (canvas.height - dh) / 2, dw, dh);
-				const gapPattern = ctx.createPattern(fillCanvas, "no-repeat");
-				if (!gapPattern) return;
-				this.drawHeadline(ctx, "l", canvas.width, canvas.height, 0.79, gapPattern);
-				const oWidth = ctx.measureText("o").width;
-				const heartWidth = oWidth * 1.1;
-				const heartHeight = heartWidth * (heartImage.height / heartImage.width);
-				const cx = canvas.width * 0.05 + ctx.measureText("l").width + oWidth / 2;
-				const cy = canvas.height * 0.79 - canvas.height * 0.07;
-				ctx.globalCompositeOperation = "multiply";
-				ctx.drawImage(heartImage, cx - heartWidth / 2, cy - heartHeight / 2, heartWidth, heartHeight);
-				ctx.globalCompositeOperation = "source-over";
-				this.drawHeadline(ctx, "ve", canvas.width, canvas.height, 0.97, gapPattern);
-				this.drawMountainShadow(ctx, canvas.width, canvas.height, canvas.width);
+				const scale = Math.max(
+					canvas.width / pageTwoImage.naturalWidth,
+					canvas.height / pageTwoImage.naturalHeight,
+				);
+				const dw = pageTwoImage.naturalWidth * scale;
+				const dh = pageTwoImage.naturalHeight * scale;
+				ctx.drawImage(
+					pageTwoImage,
+					(canvas.width - dw) / 2,
+					(canvas.height - dh) / 2,
+					dw,
+					dh,
+				);
 			}
 		} else if (pageNumber === 3) {
 			ctx.fillStyle = "#ffffff";
