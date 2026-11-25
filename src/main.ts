@@ -25,7 +25,7 @@ document.addEventListener("DOMContentLoaded", () => {
 		textureUrls: {
 			pages: [
 				"/img/pages/front-cover.jpg",
-				"/img/pages/untitled1-page-1.png",
+				"/img/pages/er-page-1.png",
 				"/img/pages/sdfgh-page-2.png",
 				_url("/img/pages/blank.jpg"),
 				_url("/img/pages/blank.jpg"),

@@ -10,7 +10,7 @@ import {
 const pageTwoImage = new Image();
 pageTwoImage.src = "/img/pages/sdfgh-page-2.png";
 const pageOneImage = new Image();
-pageOneImage.src = "/img/pages/untitled1-page-1.png";
+pageOneImage.src = "/img/pages/er-page-1.png";
 const backgroundImage = new Image();
 backgroundImage.crossOrigin = "anonymous";
 backgroundImage.src =
