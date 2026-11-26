@@ -109,6 +109,25 @@ export function initChapterConsole(flipbook: Flipbook): void {
 		if (!quad || quad.length !== 4) return;
 		const values = quadMatrix(quad[0], quad[1], quad[2], quad[3], width, height);
 		if (values.some(value => !Number.isFinite(value))) return;
+
+		// The page is bent, so its real center is not the center of the corner
+		// quad. Nudge the mapping until the code sits on that visible center.
+		const pageCenter = flipbook.getFaceScreenPoint(4, 0.5, 0.5);
+		if (pageCenter) {
+			const halfW = width / 2;
+			const halfH = height / 2;
+			const denom =
+				values[3] * halfW + values[7] * halfH + 1;
+			if (Math.abs(denom) > 1e-9) {
+				const mappedX =
+					(values[0] * halfW + values[4] * halfH + values[12]) / denom;
+				const mappedY =
+					(values[1] * halfW + values[5] * halfH + values[13]) / denom;
+				values[12] += pageCenter.x - mappedX;
+				values[13] += pageCenter.y - mappedY;
+			}
+		}
+
 		if (
 			values.length === lastValues.length &&
 			values.every((value, index) => value === lastValues[index])

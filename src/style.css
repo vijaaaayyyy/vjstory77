@@ -132,6 +132,7 @@ body {
 	width: max-content;
 	pointer-events: auto;
 	cursor: text;
+	transform: translate(24px, 48px);
 }
 
 .chapter-code-block {

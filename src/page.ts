@@ -485,6 +485,41 @@ export default class Page {
 			: [];
 	}
 
+	// Point on the bent printed face at a UV coordinate. The mesh only has
+	// top/bottom vertices, so the vertical position is interpolated between
+	// them while the horizontal position follows the real page curve.
+	public getFacePoint(isFront: boolean, u: number, v: number): THREE.Vector3 | null {
+		const position = this.mesh.geometry.attributes.position;
+		const uv = this.mesh.geometry.attributes.uv;
+		let bestU = Infinity;
+		let top: THREE.Vector3 | null = null;
+		let bottom: THREE.Vector3 | null = null;
+
+		for (let i = 0; i < position.count; i++) {
+			const rel = this.vertexRelCoords[i];
+			if ((rel.x < 0.5) !== isFront) continue;
+
+			const distance = Math.abs(uv.getX(i) - u);
+			if (distance > bestU + 1e-6) continue;
+			if (distance < bestU - 1e-6) {
+				bestU = distance;
+				top = null;
+				bottom = null;
+			}
+
+			const point = new THREE.Vector3(
+				position.getX(i),
+				position.getY(i),
+				position.getZ(i),
+			);
+			if (uv.getY(i) > 0.5) top = point;
+			else bottom = point;
+		}
+
+		if (!top || !bottom) return null;
+		return bottom.clone().lerp(top, v);
+	}
+
 	public getCurve() {
 		if (this.isCover) {
 			const backShift = this.rootThickness;

@@ -961,6 +961,29 @@ export default class Flipbook {
 		});
 	}
 
+	// Projects an arbitrary printed-face UV point into screen pixels.
+	public getFaceScreenPoint(
+		faceIndex: number,
+		u: number,
+		v: number,
+	): ScreenPoint | null {
+		if (!this.initCompleted) return null;
+		const page = this.pages[Math.floor(faceIndex / 2)];
+		if (!page) return null;
+
+		const point = page.getFacePoint(faceIndex % 2 === 0, u, v);
+		if (!point) return null;
+
+		page.mesh.updateWorldMatrix(true, false);
+		const projected = page.mesh
+			.localToWorld(point.clone())
+			.project(this.camera);
+		return {
+			x: (projected.x * 0.5 + 0.5) * window.innerWidth,
+			y: (-projected.y * 0.5 + 0.5) * window.innerHeight,
+		};
+	}
+
 	public getActiveAreaAt(scenePos: THREE.Vector2) {
 		if (!this.initCompleted) return;
 		if (this.isTurning()) return;
