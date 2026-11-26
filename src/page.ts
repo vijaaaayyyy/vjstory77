@@ -13,8 +13,7 @@ const pageOneImage = new Image();
 pageOneImage.src = "/img/pages/er-page-1.png";
 const backgroundImage = new Image();
 backgroundImage.crossOrigin = "anonymous";
-backgroundImage.src =
-	"https://cdn.builder.io/api/v1/image/assets%2F642fe6953ac445aa94caa185de9acd75%2F8ea28b056659491dbc62979e1590a30f?format=webp&width=800&height=1200";
+backgroundImage.src = "/img/pages/gjj-page-4.png";
 
 const pageFiveImage = new Image();
 pageFiveImage.crossOrigin = "anonymous";
@@ -38,8 +37,7 @@ pageEightImage.src =
 
 const contentsImage = new Image();
 contentsImage.crossOrigin = "anonymous";
-contentsImage.src =
-	"https://cdn.builder.io/api/v1/image/assets%2F642fe6953ac445aa94caa185de9acd75%2Fddead068c1d24da19e0540ce4242d29c?format=webp&width=800&height=1200";
+contentsImage.src = "/img/pages/contents-clean.png";
 
 export default class Page {
 	public textureUrls;
@@ -447,6 +445,44 @@ export default class Page {
 		geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
 
 		uv.needsUpdate = true;
+	}
+
+	// Corner positions of a printed face in mesh-local space, ordered
+	// top-left, top-right, bottom-right, bottom-left in texture coordinates.
+	public getFaceCorners(isFront: boolean): THREE.Vector3[] {
+		const position = this.mesh.geometry.attributes.position;
+		const uv = this.mesh.geometry.attributes.uv;
+		const corners = Array.from({ length: 4 }, () => ({
+			point: new THREE.Vector3(),
+			distance: Infinity,
+		}));
+
+		for (let i = 0; i < position.count; i++) {
+			const rel = this.vertexRelCoords[i];
+			if ((rel.x < 0.5) !== isFront) continue;
+
+			const u = uv.getX(i);
+			const v = uv.getY(i);
+			const targetU = u < 0.5 ? 0 : 1;
+			const targetV = v < 0.5 ? 0 : 1;
+			const index = targetV * 2 + targetU;
+			const distance = Math.abs(u - targetU) + Math.abs(v - targetV);
+			if (distance < corners[index].distance) {
+				corners[index] = {
+					point: new THREE.Vector3(
+						position.getX(i),
+						position.getY(i),
+						position.getZ(i),
+					),
+					distance,
+				};
+			}
+		}
+
+		const ordered = [corners[2], corners[3], corners[1], corners[0]];
+		return ordered.every(corner => corner.distance !== Infinity)
+			? ordered.map(corner => corner.point)
+			: [];
 	}
 
 	public getCurve() {

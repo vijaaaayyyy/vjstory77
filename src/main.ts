@@ -1,5 +1,6 @@
 import "./style.css";
 import Flipbook from "./flipbook";
+import { initChapterConsole } from "./chapter-console";
 
 declare global {
 	interface Window {
@@ -399,4 +400,6 @@ document.addEventListener("DOMContentLoaded", () => {
 			},
 		],
 	});
+
+	initChapterConsole(window.flipbook);
 });

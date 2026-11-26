@@ -13,6 +13,8 @@ import PageCurveHelper from "./page-curve-helper";
 const WHEEL_PROGRESS_DIVISOR = 320;
 const WHEEL_END_DELAY_MS = 260;
 
+export type ScreenPoint = { x: number; y: number };
+
 export default class Flipbook {
 	private containerEl: HTMLElement;
 	private wrapperLinkEl: HTMLElement;
@@ -88,6 +90,8 @@ export default class Flipbook {
 	private wheelTurnActive = false;
 	private wheelDirection = 0;
 	private wheelEndTimeout?: number;
+	private lastCameraProgress = NaN;
+	private lastCameraSideShift = NaN;
 
 	constructor(params: FlipBookParams) {
 		this.containerEl = params.containerEl;
@@ -121,15 +125,24 @@ export default class Flipbook {
 			9000,
 		);
 
+		const isMobile =
+			/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) ||
+			window.innerWidth < 768;
+
 		this.renderer = new THREE.WebGLRenderer();
 		// this.renderer = new THREE.WebGLRenderer({ antialias: true });
 		this.renderer.outputColorSpace = THREE.SRGBColorSpace;
 		// this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
 		// this.renderer.toneMappingExposure = 1.2;
-		this.renderer.setPixelRatio(window.devicePixelRatio);
+		// Capping the pixel ratio is the single biggest mobile GPU saving.
+		this.renderer.setPixelRatio(
+			Math.min(window.devicePixelRatio || 1, isMobile ? 1.5 : 2),
+		);
 		this.renderer.setSize(window.innerWidth, window.innerHeight);
 		this.renderer.shadowMap.enabled = true;
-		this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+		this.renderer.shadowMap.type = isMobile
+			? THREE.PCFShadowMap
+			: THREE.PCFSoftShadowMap;
 		this.renderer.domElement.classList.add("flipbook-canvas");
 		this.wrapperLinkEl = document.createElement("a");
 		this.wrapperLinkEl.draggable = false;
@@ -281,7 +294,14 @@ export default class Flipbook {
 		this.scene.add(deskMesh);
 
 		this.updateVerticalMode();
-		this.applySettings(params.settings || {}, true);
+		const settings = { ...(params.settings || {}) };
+		if (isMobile) {
+			settings.spotLightMapSize = Math.min(
+				settings.spotLightMapSize ?? 1024,
+				1024,
+			);
+		}
+		this.applySettings(settings, true);
 
 		// Add fps counter
 		this.stats = new Stats();
@@ -671,7 +691,16 @@ export default class Flipbook {
 		this.initCompleted = true;
 
 		if (!this.isChangingFocus && !this.focusedActiveArea) {
-			this.restoreCamera();
+			const progress = this.progress.getValue();
+			const sideShift = this.cameraSideShift.getValue();
+			if (
+				progress !== this.lastCameraProgress ||
+				sideShift !== this.lastCameraSideShift
+			) {
+				this.lastCameraProgress = progress;
+				this.lastCameraSideShift = sideShift;
+				void this.restoreCamera();
+			}
 		}
 
 		// TODO:
@@ -900,6 +929,38 @@ export default class Flipbook {
 		}
 	}
 
+	public getProgress(): number {
+		return this.progress.getValue();
+	}
+
+	public onProgressChange(callback: (progress: number) => void): void {
+		this.progress.addCallback(
+			"valueChange",
+			({ newValue }: ValueChangeEvent) => callback(newValue),
+		);
+	}
+
+	// Projects the four corners of a printed page face into screen pixels.
+	public getFaceScreenQuad(faceIndex: number): ScreenPoint[] | null {
+		if (!this.initCompleted) return null;
+		const page = this.pages[Math.floor(faceIndex / 2)];
+		if (!page) return null;
+
+		const corners = page.getFaceCorners(faceIndex % 2 === 0);
+		if (corners.length !== 4) return null;
+
+		page.mesh.updateWorldMatrix(true, false);
+		return corners.map(corner => {
+			const projected = page.mesh
+				.localToWorld(corner.clone())
+				.project(this.camera);
+			return {
+				x: (projected.x * 0.5 + 0.5) * window.innerWidth,
+				y: (-projected.y * 0.5 + 0.5) * window.innerHeight,
+			};
+		});
+	}
+
 	public getActiveAreaAt(scenePos: THREE.Vector2) {
 		if (!this.initCompleted) return;
 		if (this.isTurning()) return;
@@ -960,6 +1021,14 @@ export default class Flipbook {
 		duration = 0,
 	) {
 		const targetPos = this.getCameraPos(corners);
+
+		// Instant updates are common (every camera tracking tick), so avoid
+		// creating GSAP tweens and timers for them.
+		if (!duration) {
+			this.camera.position.copy(targetPos.position);
+			this.camera.quaternion.copy(targetPos.rotation);
+			return;
+		}
 
 		let restFinishAt = 1;
 		if (preset === "page-zoom" || preset === "page-unzoom") {
@@ -1169,7 +1238,7 @@ export default class Flipbook {
 		this.updateCursor();
 	}
 
-	private goToPage(pageIndex: number) {
+	public goToPage(pageIndex: number) {
 		const progress =
 			pageIndex % 2 === 0 ? pageIndex / 2 : (pageIndex + 1) / 2;
 		this.progress.setMin(progress);
